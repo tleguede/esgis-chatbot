@@ -25,7 +25,7 @@ deploy:
 	@echo "Deploying to " ${env}
 	# Extract env from the branch name
 
-	sam deploy --resolve-s3 --template-file .aws-sam/build/template.yaml --stack-name multi-stack-tleguede-dev \
+	sam deploy --resolve-s3 --template-file .aws-sam/build/template.yaml --stack-name multi-stack-${env} \
          --capabilities CAPABILITY_IAM --region ${AWS_REGION} --parameter-overrides EnvironmentName=${env} --no-fail-on-empty-changeset
 
 
