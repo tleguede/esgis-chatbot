@@ -31,7 +31,7 @@ class Utils:
     @staticmethod
     def log_error(message):
         """_summary_
-        Log an error message
+        Log an error message maybe with a stack trace
         """
         logging.getLogger("uvicorn.error").error(msg=f"==> {message}")
 
