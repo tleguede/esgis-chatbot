@@ -12,6 +12,7 @@ pipeline {
     }
 
     stages {
+
         stage('Initialisation') {
             steps {
                 sh "echo Branch name ${BRANCH_NAME}"
@@ -19,7 +20,18 @@ pipeline {
             }
         }
 
-
+        stage('Retrieve Env File') {
+            steps {
+                script {
+                    // Retrieve the .env file from Jenkins credentials (file type)
+                    withCredentials([file(credentialsId: 'tleguede-chatbot-env-file', variable: 'ENV_FILE')]) {
+                        sh 'cp "$ENV_FILE" .env'
+                        echo ".env file retrieved and copied to workspace."
+                    }
+                }
+            }
+        }
+        
         stage('Tests Unitaires') {
             steps {
                 script {
