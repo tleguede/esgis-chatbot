@@ -13,9 +13,9 @@ Parameters:
       - dev
       - preprod
       - prod
-      - tleguede_dev
-      - tleguede_preprod
-      - tleguede_prod
+      - tleguede-dev
+      - tleguede-preprod
+      - tleguede-prod
 
 ###############################################################################
 Resources:
