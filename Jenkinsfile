@@ -23,10 +23,8 @@ pipeline {
         stage('Retrieve Env File') {
             steps {
                 script {
-                    // Retrieve the .env file from Jenkins credentials (file type)
                     withCredentials([file(credentialsId: 'tleguede-chatbot-env-file', variable: 'ENV_FILE')]) {
                        sh "cat ${ENV_FILE} > .env"
-                        echo ".env file retrieved and copied to workspace with correct permissions."
                     }
                 }
             }
