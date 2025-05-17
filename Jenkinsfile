@@ -23,8 +23,16 @@ pipeline {
         stage('Retrieve Env File') {
             steps {
                 script {
+                    // Show directory permissions and content before copying
+                    sh '''
+                        echo "Current directory permissions:"
+                        ls -la .
+                        echo "\nCurrent user and groups:"
+                        id
+                    '''
+                    
                     withCredentials([file(credentialsId: 'tleguede-chatbot-env-file', variable: 'ENV_FILE')]) {
-                       sh 'cat ${ENV_FILE} > .env'
+                       sh "cat ${ENV_FILE} >> .env"
                     }
                 }
             }
