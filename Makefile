@@ -30,7 +30,7 @@ deploy:
 
 
 serve:
-	.venv/bin/fastapi dev src/main.py
+	venv/bin/fastapi dev src/main.py
 
 test:
 	@echo "Running tests..."

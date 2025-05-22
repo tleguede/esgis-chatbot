@@ -20,23 +20,16 @@ pipeline {
             }
         }
 
-        stage('Retrieve Env File') {
+        stage('Environment variable injection'){
             steps {
-                script {
-                    // Show directory permissions and content before copying
-                    sh '''
-                        echo "Current directory permissions:"
-                        ls -la .
-                        echo "\nCurrent user and groups:"
-                        id
-                    '''
-                    
-                    withCredentials([file(credentialsId: 'tleguede-chatbot-env-file', variable: 'ENV_FILE')]) {
-                       sh "cat ${ENV_FILE} >> .env"
+                script{
+                    withCredentials([file(credentialsId: 'hervlokossou-chatbot-env-file', variable: 'ENV_FILE')]) {
+                        sh "cat $ENV_FILE >> .env"
                     }
                 }
             }
         }
+
 
         stage('Tests Unitaires') {
             steps {
@@ -73,7 +66,7 @@ pipeline {
                 script {
                     // Add your endpoint testing commands here
                     echo "Testing the endpoint..."
-                    sh "make test-endpoint"
+                    sh "make test-endpoint env=${BRANCH_NAME}"
                 }
             }
         }

@@ -55,3 +55,11 @@ class Utils:
         return boto3.Session(
             region_name=env_vars.AWS_REGION_NAME, profile_name=env_vars.AWS_PROFILE
         )
+
+    @staticmethod
+    def insert_data(item):
+        dynamo_client = boto3.client("dynamodb", region_name=env_vars.AWS_REGION_NAME)
+        dynamo_client.put_item(
+            TableName=env_vars.DYNAMO_TABLE,
+            Item=item,
+        )
