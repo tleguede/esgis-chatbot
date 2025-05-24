@@ -95,7 +95,7 @@ curl "http://localhost:8000/chat?question=Bonjour%20IA"
    ```
 2. Lancer l’API :
    ```bash
-   uvicorn src.main:app --reload
+   make serve
    ```
 3. Accéder à la doc interactive : [http://localhost:8000](http://localhost:8000)
 
