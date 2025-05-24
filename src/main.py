@@ -11,6 +11,8 @@ from .config import env_vars
 from .utils import Utils
 
 api_key = env_vars.MISTRAL_API_KEY
+if not api_key or api_key.strip() == "":
+    raise RuntimeError("MISTRAL_API_KEY is missing or empty. Please set it in your environment variables or .env file.")
 model = "mistral-small-latest"
 client = MistralClient(api_key=api_key)
 

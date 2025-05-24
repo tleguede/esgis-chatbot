@@ -20,15 +20,15 @@ pipeline {
             }
         }
 
-        // stage('Environment variable injection'){
-        //     steps {
-        //         script{
-        //             withCredentials([file(credentialsId: 'tleguede-chatbot-env-file', variable: 'ENV_FILE')]) {
-        //                 sh "cat $ENV_FILE >> .env"
-        //             }
-        //         }
-        //     }
-        // }
+        stage('Environment variable injection'){
+            steps {
+                script{
+                    withCredentials([file(credentialsId: 'tleguede-chatbot-env-file', variable: 'ENV_FILE')]) {
+                        sh "cat $ENV_FILE >> .env"
+                    }
+                }
+            }
+        }
 
 
         stage('Tests Unitaires') {
