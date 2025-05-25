@@ -5,7 +5,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 from src.config import env_vars
 
-API_URL = "http://localhost:8000"  # Change if deployed elsewhere
+API_URL = env_vars.API_URL if hasattr(env_vars, 'API_URL') else "http://localhost:8000"
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
