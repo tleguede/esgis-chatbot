@@ -97,7 +97,16 @@ curl "http://localhost:8000/chat?question=Bonjour%20IA"
    ```bash
    make serve
    ```
-3. Accéder à la doc interactive : [http://localhost:8000](http://localhost:8000)
+
+## Lancer le bot Telegram
+
+
+Depuis la racine du projet, exécute :
+```bash
+make bot
+```
+
+Le bot sera alors accessible sur Telegram à l’adresse [@esgis_oops_bot](https://t.me/esgis_oops_bot).
 
 ## Déploiement AWS
 - Utiliser le Makefile (`make build`, `make deploy`) et le template SAM (`infrastructure/template.yaml`)
