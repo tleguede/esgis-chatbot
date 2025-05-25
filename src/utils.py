@@ -12,42 +12,85 @@ from src.config import env_vars
 
 class Utils:
     @staticmethod
-    def close_conversation(conversation_id: str, telegram_id: str):
+    def set_conversation_metadata(conversation_id: str, telegram_id: str, status: str = "active"):
         """
-        Marque une conversation comme close (ajoute ou met à jour un item status=closed).
+        Create or update the metadata item for a conversation (PK=CONV#<conversation_id>, SK=METADATA).
         """
         dynamo_client = boto3.client("dynamodb", region_name=env_vars.AWS_REGION_NAME)
-        # On récupère tous les items de la conversation pour cet utilisateur et on les met à jour
-        items = Utils.get_conversation_history_by_id(conversation_id, telegram_id)
-        for item in items:
-            pk = item['PK']['S']
-            sk = item['SK']['S']
-            dynamo_client.update_item(
-                TableName=env_vars.DYNAMO_TABLE,
-                Key={"PK": {"S": pk}, "SK": {"S": sk}},
-                UpdateExpression="SET #s = :closed",
-                ExpressionAttributeNames={"#s": "status"},
-                ExpressionAttributeValues={":closed": {"S": "closed"}}
-            )
+        item = {
+            'PK': {'S': f'CONV#{conversation_id}'},
+            'SK': {'S': 'METADATA'},
+            'conversation_id': {'S': conversation_id},
+            'telegram_id': {'S': telegram_id},
+            'status': {'S': status},
+        }
+        dynamo_client.put_item(
+            TableName=env_vars.DYNAMO_TABLE,
+            Item=item,
+        )
+
+    @staticmethod
+    def get_conversation_metadata(conversation_id: str):
+        """
+        Get the metadata item for a conversation (PK=CONV#<conversation_id>, SK=METADATA).
+        """
+        dynamo_client = boto3.client("dynamodb", region_name=env_vars.AWS_REGION_NAME)
+        response = dynamo_client.get_item(
+            TableName=env_vars.DYNAMO_TABLE,
+            Key={
+                'PK': {'S': f'CONV#{conversation_id}'},
+                'SK': {'S': 'METADATA'}
+            }
+        )
+        return response.get('Item')
+    @staticmethod
+    def close_conversation(conversation_id: str, telegram_id: str):
+        """
+        Mark a conversation as closed by updating its metadata item (PK=CONV#<conversation_id>, SK=METADATA).
+        """
+        Utils.set_conversation_metadata(conversation_id, telegram_id, status="closed")
 
     @staticmethod
     def get_last_active_conversation(telegram_id: str):
         """
         Retourne le dernier conversation_id actif (status != closed) pour un utilisateur.
+        Utilise le GSI sur telegram_id pour les items de métadonnées (PK=CONV#<conversation_id>, SK=METADATA) si disponible.
+        Fallback sur Scan si le GSI n'est pas encore déployé.
         """
         dynamo_client = boto3.client("dynamodb", region_name=env_vars.AWS_REGION_NAME)
-        response = dynamo_client.query(
-            TableName=env_vars.DYNAMO_TABLE,
-            KeyConditionExpression='PK = :pk',
-            ExpressionAttributeValues={
-                ':pk': {'S': f'USER#{telegram_id}'},
-            },
-            ScanIndexForward=False,  # du plus récent au plus ancien
-            Limit=50
-        )
-        items = response.get('Items', [])
-        for item in items:
-            # On considère la première conversation non close comme la dernière active
+        try:
+            # Essayons d'utiliser le GSI (GSI-TelegramId-Metadata)
+            response = dynamo_client.query(
+                TableName=env_vars.DYNAMO_TABLE,
+                IndexName="GSI-TelegramId-Metadata",
+                KeyConditionExpression="telegram_id = :tid AND SK = :meta",
+                ExpressionAttributeValues={
+                    ':tid': {'S': telegram_id},
+                    ':meta': {'S': 'METADATA'}
+                },
+                ScanIndexForward=False,  # du plus récent au plus ancien
+                Limit=50
+            )
+            items = response.get('Items', [])
+        except Exception as e:
+            # Si le GSI n'existe pas encore, fallback sur Scan (dev/test only)
+            items = []
+            try:
+                response = dynamo_client.scan(
+                    TableName=env_vars.DYNAMO_TABLE,
+                    FilterExpression="telegram_id = :tid AND SK = :meta",
+                    ExpressionAttributeValues={
+                        ':tid': {'S': telegram_id},
+                        ':meta': {'S': 'METADATA'}
+                    },
+                    Limit=50
+                )
+                items = response.get('Items', [])
+            except Exception as e2:
+                Utils.log_error(f"Erreur lors de la recherche de conversation active: {e2}")
+                return None
+        # Find the most recent active conversation (not closed)
+        for item in sorted(items, key=lambda x: x.get('PK', {}).get('S', ''), reverse=True):
             if item.get('status', {}).get('S', 'active') != 'closed':
                 return item.get('conversation_id', {}).get('S', None)
         return None
@@ -55,11 +98,10 @@ class Utils:
     @staticmethod
     def start_conversation(telegram_id: str) -> str:
         """
-        Crée un nouvel identifiant de conversation (UUID) et retourne cet ID.
+        Crée un nouvel identifiant de conversation (UUID), crée le metadata item (status=active), et retourne cet ID.
         """
         conversation_id = str(uuid4())
-        # Optionnel : on peut enregistrer un "démarrage" de conversation dans DynamoDB si besoin
-        # Ici, on ne stocke rien, on retourne juste l'ID
+        Utils.set_conversation_metadata(conversation_id, telegram_id, status="active")
         return conversation_id
 
     @staticmethod

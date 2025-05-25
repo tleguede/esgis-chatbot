@@ -28,6 +28,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.effective_user.id)
     user_message = update.message.text
+    # Validation de l'entrée utilisateur
+    if not user_message or not user_message.strip():
+        await update.message.reply_text("Votre message ne peut pas être vide.")
+        return
     # Récupérer la dernière conversation active ou en démarrer une
     resp = requests.get(f"{API_URL}/conversation/active/{user_id}")
     conversation_id = resp.json().get("conversation_id")

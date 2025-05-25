@@ -27,9 +27,26 @@ Resources:
       AttributeDefinitions:
         - AttributeName: "id"
           AttributeType: "S"
+        # Ajout pour GSI sur telegram_id pour les items de métadonnées de conversation
+        - AttributeName: "telegram_id"
+          AttributeType: "S"
+        - AttributeName: "SK"
+          AttributeType: "S"
       KeySchema:
         - AttributeName: "id"
           KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        - IndexName: "GSI-TelegramId-Metadata"
+          KeySchema:
+            - AttributeName: "telegram_id"
+              KeyType: "HASH"
+            - AttributeName: "SK"
+              KeyType: "RANGE"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 5
+            WriteCapacityUnits: 5
       ProvisionedThroughput:
         ReadCapacityUnits: 5
         WriteCapacityUnits: 5

@@ -67,6 +67,8 @@ async def root():
 
 @app.get("/chat")
 async def chat(question: str):
+    if not question or not question.strip():
+        raise HTTPException(status_code=400, detail="Le paramètre 'question' est requis et ne doit pas être vide.")
     try:
         chat_response = client.chat(
             model=model,
@@ -179,7 +181,8 @@ class ConversationCloseIn(BaseModel):
 @app.post("/conversation/{conversation_id}/close")
 async def close_conversation(conversation_id: str = Path(...), data: ConversationCloseIn = Body(...)):
     """
-    Clôture une conversation (status=closed pour tous les messages de cette conversation).
+    Clôture une conversation en mettant à jour uniquement l'item de métadonnées (PK=CONV#<conversation_id>, SK=METADATA, status=closed).
+    Les messages de la conversation ne sont plus modifiés individuellement.
     """
     try:
         Utils.close_conversation(conversation_id, data.telegram_id)

@@ -31,7 +31,7 @@ Projet scolaire Python : ChatBot connecté à l’IA Mistral, persistance Dynamo
 * `POST /conversation/start` : Démarre une nouvelle conversation et retourne un `conversation_id`
 * `GET /conversation/active/{telegram_id}` : Récupère le dernier `conversation_id` actif pour un utilisateur
 * `POST /conversation/message` : Enregistre un message utilisateur + réponse bot dans une conversation
-* `POST /conversation/{conversation_id}/close` : Clôture une conversation (status=closed)
+* `POST /conversation/{conversation_id}/close` : Clôture une conversation (status=closed, via un item de métadonnées dédié)
 * `GET /conversation/{conversation_id}/history?telegram_id=...` : Récupère l’historique d’une conversation précise
 * `GET /conversation/history/{telegram_id}` : Récupère l’historique de tous les messages d’un utilisateur
 * `GET /chat?question=...` : Envoie une question à l’IA Mistral
@@ -127,13 +127,15 @@ Le bot sera alors accessible sur Telegram à l’adresse [@esgis\_oops\_bot](htt
 
 * Pipeline défini dans `Jenkinsfile` : tests, build, déploiement, test endpoint
 
-## Contraintes DynamoDB
 
-* **Aucune opération Scan n’est autorisée** (Query uniquement)
+## Contraintes DynamoDB et gestion des statuts de conversation
+
+* **Aucune opération Scan n’est autorisée** (Query uniquement, sauf pour la recherche de conversations actives sans GSI sur telegram_id)
 * Structure des clés :
-
-  * PK = USER#{telegram\_id}
-  * SK = MSG#{timestamp}
+  * PK = USER#{telegram_id}, SK = MSG#{timestamp} pour chaque message
+  * PK = CONV#{conversation_id}, SK = METADATA pour l'item de métadonnées de la conversation (contient status et telegram_id)
+* Le statut (actif/clos) d'une conversation est désormais stocké uniquement dans l'item de métadonnées, et non plus dans chaque message.
+* Pour retrouver la dernière conversation active d'un utilisateur, l'API recherche l'item de métadonnées le plus récent avec status != closed (optimisable avec un GSI sur telegram_id).
 
 ## Bot Telegram : Workflow recommandé
 
