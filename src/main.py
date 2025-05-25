@@ -1,4 +1,7 @@
-from fastapi import FastAPI
+from fastapi import Path
+from uuid import uuid4
+from fastapi import FastAPI, Body, HTTPException
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from mangum import Mangum
@@ -9,6 +12,19 @@ from .config import env_vars
 
 
 from .utils import Utils
+
+class ConversationMessageIn(BaseModel):
+    telegram_id: str
+    conversation_id: str
+    user_message: str
+    bot_response: str
+    timestamp: str = None
+
+class ConversationMessageOut(BaseModel):
+    conversation_id: str
+    user_message: str
+    bot_response: str
+    timestamp: str
 
 api_key = env_vars.MISTRAL_API_KEY
 if not api_key or api_key.strip() == "":
@@ -22,6 +38,7 @@ client = MistralClient(api_key=api_key)
 async def app_lifespan(application: FastAPI):
     Utils.log_info("Starting the application")
     yield
+
 
 
 app = FastAPI(
@@ -40,9 +57,12 @@ app.add_middleware(
 )
 
 
+# Redirige le root vers la documentation interactive
+from fastapi.responses import RedirectResponse
+
 @app.get("/")
 async def root():
-    return {"msg": "Hello World"}
+    return RedirectResponse(url="/docs")
 
 
 @app.get("/chat")
@@ -76,6 +96,110 @@ async def chat(question: str):
         print("Exception in /chat endpoint:", e)
         traceback.print_exc()
         return {"error": str(e)}
+
+# --- Conversation Management Endpoints ---
+
+# 1. Démarrer une conversation et obtenir un conversation_id
+class ConversationStartIn(BaseModel):
+    telegram_id: str
+
+class ConversationStartOut(BaseModel):
+    conversation_id: str
+
+@app.post("/conversation/start", response_model=ConversationStartOut)
+async def start_conversation(data: ConversationStartIn):
+    """
+    Démarre une nouvelle conversation pour un utilisateur et retourne un conversation_id unique.
+    """
+    conversation_id = Utils.start_conversation(data.telegram_id)
+    return {"conversation_id": conversation_id}
+
+# 2. Récupérer l'historique d'une conversation précise
+@app.get("/conversation/{conversation_id}/history")
+async def get_conversation_history_by_id(conversation_id: str = Path(...), telegram_id: str = None, limit: int = 50):
+    """
+    Récupère l'historique des messages pour un conversation_id donné (optionnellement filtré par telegram_id).
+    """
+    if not telegram_id:
+        raise HTTPException(status_code=400, detail="telegram_id est requis pour la requête.")
+    items = Utils.get_conversation_history_by_id(conversation_id, telegram_id, limit)
+    history = []
+    for item in items:
+        history.append({
+            "conversation_id": item.get("conversation_id", {}).get("S", ""),
+            "user_message": item.get("user_message", {}).get("S", ""),
+            "bot_response": item.get("bot_response", {}).get("S", ""),
+            "timestamp": item.get("timestamp", {}).get("S", ""),
+        })
+    return {"history": history}
+
+
+# --- Conversation Endpoints (placés après la création de app) ---
+@app.post("/conversation/message", response_model=None)
+async def save_conversation_message(data: ConversationMessageIn):
+    """
+    Enregistre un message utilisateur + réponse bot dans DynamoDB.
+    """
+    try:
+        Utils.save_conversation_message(
+            telegram_id=data.telegram_id,
+            conversation_id=data.conversation_id,
+            user_message=data.user_message,
+            bot_response=data.bot_response,
+            timestamp=data.timestamp
+        )
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/conversation/history/{telegram_id}")
+async def get_conversation_history(telegram_id: str, limit: int = 20):
+    """
+    Récupère l'historique des messages pour un utilisateur (par son Telegram ID).
+    """
+    try:
+        items = Utils.get_conversation_history(telegram_id, limit)
+        # Convert DynamoDB format to plain dict
+        history = []
+        for item in items:
+            history.append({
+                "conversation_id": item.get("conversation_id", {}).get("S", ""),
+                "user_message": item.get("user_message", {}).get("S", ""),
+                "bot_response": item.get("bot_response", {}).get("S", ""),
+                "timestamp": item.get("timestamp", {}).get("S", ""),
+            })
+        return {"history": history}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 3. Clôturer une conversation
+class ConversationCloseIn(BaseModel):
+    telegram_id: str
+
+@app.post("/conversation/{conversation_id}/close")
+async def close_conversation(conversation_id: str = Path(...), data: ConversationCloseIn = Body(...)):
+    """
+    Clôture une conversation (status=closed pour tous les messages de cette conversation).
+    """
+    try:
+        Utils.close_conversation(conversation_id, data.telegram_id)
+        return {"status": "closed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 4. Récupérer la dernière conversation active d'un utilisateur
+@app.get("/conversation/active/{telegram_id}")
+async def get_last_active_conversation(telegram_id: str):
+    """
+    Retourne le dernier conversation_id actif (non clos) pour un utilisateur.
+    """
+    conversation_id = Utils.get_last_active_conversation(telegram_id)
+    if conversation_id:
+        return {"conversation_id": conversation_id}
+    else:
+        return {"conversation_id": None}
+
+
 
 async def chats():
     # Get al chats here

@@ -1,3 +1,5 @@
+bot:
+	python3 -m src.telegram_bot
 
 # by default, we settle down in this region
 AWS_REGION ?= eu-west-3

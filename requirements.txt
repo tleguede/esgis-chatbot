@@ -5,3 +5,5 @@ boto3
 mangum
 httpx
 mistralai==0.4.2
+python-telegram-bot
+requests
