@@ -1,3 +1,35 @@
+## Scénarios d’utilisation & séquence des endpoints
+
+### 1. Démarrer une nouvelle conversation
+- `GET /conversation/active/{telegram_id}` : Vérifie s’il existe une conversation active
+- `POST /conversation/{conversation_id}/close` : (Si besoin) Clôture la conversation précédente
+- `POST /conversation/start` : Démarre une nouvelle conversation et récupère un `conversation_id`
+
+### 2. Envoyer un message et recevoir une réponse
+- `GET /conversation/active/{telegram_id}` : Récupère la conversation active (ou en crée une nouvelle)
+- `GET /chat?question=...` : Envoie la question à l’IA et récupère la réponse
+- `POST /conversation/message` : Enregistre le message utilisateur et la réponse du bot dans la conversation
+
+### 3. Clôturer explicitement une conversation
+- `GET /conversation/active/{telegram_id}` : Récupère la conversation active
+- `POST /conversation/{conversation_id}/close` : Clôture la conversation
+
+### 4. Afficher l’historique d’une conversation
+- `GET /conversation/{conversation_id}/history?telegram_id=...` : Récupère tous les messages de cette conversation
+
+### 5. Afficher tout l’historique utilisateur
+- `GET /conversation/history/{telegram_id}` : Récupère l’ensemble des conversations de l’utilisateur
+
+---
+
+## Exemple d’utilisation simple du bot
+
+1. L’utilisateur tape `/start` : le bot ferme la conversation précédente (si besoin) et en démarre une nouvelle.
+2. L’utilisateur envoie un message : le bot vérifie la conversation active, en crée une si besoin, envoie la question à l’IA, enregistre la question/réponse, puis affiche la réponse à l’utilisateur.
+3. L’utilisateur continue à discuter : tous les messages sont associés à la même conversation tant qu’elle n’est pas clôturée.
+4. L’utilisateur tape `/close` : le bot clôture la conversation active.
+
+---
 # ESGIS Chatbot
 
 Projet scolaire Python : ChatBot connecté à l’IA Mistral, persistance DynamoDB, déploiement AWS, CI/CD Jenkins
