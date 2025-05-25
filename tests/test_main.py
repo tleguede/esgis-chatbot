@@ -9,7 +9,8 @@ client = TestClient(app)
 def test_read_main():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"msg": "Hello World"}
+    # L'endpoint racine redirige vers la doc Swagger, donc on vérifie le HTML
+    assert "Swagger UI" in response.text or "swagger-ui" in response.text
     
 def test_read_prompt():
     response = client.get("/prompt")
